@@ -1,0 +1,231 @@
+openapi: 3.0.3
+info:
+  title: TaskFlow API
+  version: 1.0.0
+  description: Task, account, comment, and first-admin setup API.
+servers:
+  - url: http://localhost:5000/api
+paths:
+  /auth/register:
+    post:
+      summary: Register a standard user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Registration'
+      responses:
+        '201':
+          description: User registered; public registration always assigns the user role.
+        '400':
+          description: Invalid registration data.
+  /auth/login:
+    post:
+      summary: Log in as an admin or user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+      responses:
+        '200':
+          description: Authenticated user and bearer token.
+        '401':
+          description: Invalid credentials.
+  /auth/admin-setup-status:
+    get:
+      summary: Check whether first-admin setup is available
+      responses:
+        '200':
+          description: Setup availability.
+  /auth/setup-admin:
+    post:
+      summary: Create the first administrator using a server-side setup key
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/Registration'
+                - type: object
+                  required: [adminKey]
+                  properties:
+                    adminKey:
+                      type: string
+      responses:
+        '201':
+          description: First administrator created.
+        '403':
+          description: Invalid setup key.
+        '409':
+          description: Setup already completed or in progress.
+  /auth/me:
+    get:
+      summary: Get the authenticated user
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Authenticated user profile.
+  /users:
+    get:
+      summary: List users for task assignment
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Team member list.
+  /tasks:
+    get:
+      summary: List tasks visible to the authenticated user
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: status
+          schema:
+            type: string
+            enum: [todo, in_progress, completed]
+        - in: query
+          name: priority
+          schema:
+            type: string
+            enum: [low, medium, high]
+        - in: query
+          name: search
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Task list sorted by due date and creation time.
+    post:
+      summary: Create a task
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskInput'
+      responses:
+        '201':
+          description: Task created.
+  /tasks/{id}:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+    get:
+      summary: Read a task visible to the authenticated user
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Task and comments.
+        '403':
+          description: Task is outside the user's workspace.
+    put:
+      summary: Update a task or its status
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskInput'
+      responses:
+        '200':
+          description: Task updated.
+    delete:
+      summary: Delete a task created by the user or any task as an admin
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Task deleted.
+  /tasks/{id}/comments:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+    get:
+      summary: List comments on an accessible task
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Task comments and their authors.
+    post:
+      summary: Add a comment to an accessible task
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [message]
+              properties:
+                message:
+                  type: string
+                  maxLength: 2000
+      responses:
+        '201':
+          description: Comment created.
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    Registration:
+      type: object
+      required: [name, email, password]
+      properties:
+        name:
+          type: string
+          minLength: 2
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 6
+    TaskInput:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 3
+        description:
+          type: string
+          minLength: 10
+        priority:
+          type: string
+          enum: [low, medium, high]
+        status:
+          type: string
+          enum: [todo, in_progress, completed]
+        dueDate:
+          type: string
+          format: date-time
+        assigneeId:
+          type: string
