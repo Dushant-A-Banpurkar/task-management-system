@@ -8,6 +8,7 @@ import apiRoutes from './routes';
 import { startDeadlineReminderScheduler } from './services/deadlineReminders';
 
 const app = express();
+const renderKeepAliveIntervalMs = 10 * 60 * 1000;
 
 app.use(cors({
   origin: [
@@ -36,6 +37,24 @@ export const startServer = async (): Promise<void> => {
   }
   app.listen(env.port, () => {
     console.log(`Server running on port ${env.port}`);
+    if (env.renderUrl) {
+      const healthUrl = `${env.renderUrl.replace(/\/+$/, '')}/health`;
+      const keepAliveTimer = setInterval(async () => {
+        try {
+          const response = await fetch(healthUrl, {
+            signal: AbortSignal.timeout(10_000),
+          });
+          await response.text();
+          if (!response.ok) {
+            console.warn(`Render keep-alive request failed with status ${response.status}`);
+          }
+        } catch (error) {
+          console.error('Render keep-alive request failed', error);
+        }
+      }, renderKeepAliveIntervalMs);
+      keepAliveTimer.unref();
+      console.log('Render keep-alive enabled');
+    }
   });
 };
 
