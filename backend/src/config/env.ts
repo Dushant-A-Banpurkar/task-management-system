@@ -10,4 +10,5 @@ export const env = {
   adminSetupKey: process.env.ADMIN_SETUP_KEY,
   resendApiKey: process.env.RESEND_API_KEY,
   reminderFromEmail: process.env.REMINDER_FROM_EMAIL,
+  renderUrl: process.env.RENDER_URL,
 };
