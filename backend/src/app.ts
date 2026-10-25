@@ -9,7 +9,12 @@ import { startDeadlineReminderScheduler } from './services/deadlineReminders';
 
 const app = express();
 
-app.use(cors());
+app.use(cors({
+  origin: [
+    'https://task-management-system-lyart-ten.vercel.app',
+    'http://localhost:5173',
+  ],
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
